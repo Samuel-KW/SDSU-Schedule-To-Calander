@@ -8,30 +8,10 @@ const Timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 /**
  * Converts a UTC date into the proper format for ICS calendar files for DTSTAMP, DTSTART and DTEND
- * https://gist.github.com/mstudio/1d57356d90815cdf5a56ed873d41ce6d
  * @param {Date} date, e.g. new Date()
  * @returns {String} formatted as UTC date for ICS files, e.g. 20220511T170000Z
  */
-const toICS = (date) => {
-    const dateArray = date.toISOString().split("T");
-    const day = dateArray[0].replace(/-/g, "");
-    const time = dateArray[1].replace(/[a-zA-Z]+/g, "").split(":");
-    const ics = `${day}T${getDigits(time[0])}${getDigits(time[1])}${getDigits(
-        time[2],
-    )}Z`;
-    return ics;
-};
-
-/**
- * https://gist.github.com/mstudio/1d57356d90815cdf5a56ed873d41ce6d
- * @param {String} timeString, e.g. '2.19'
- * @returns {String} 2 digit string, e.g. '02'
- */
-const getDigits = (timeString) => {
-    let digits = String(Math.round(parseInt(timeString, 10)));
-    if (digits.length === 1) digits = `0${digits}`;
-    return digits;
-};
+const toICS = date => date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 
 /**
  * Downloads a calander (ICS format) with the given text as its contents
@@ -209,13 +189,13 @@ class Course {
     toICS () {
         const start = toICS(this.start);
         const end = toICS(this.end);
-        const rrule = `FREQ=WEEKLY;BYDAY=${this.days.map(e => e.slice(0, 2)).join(",")};UNTIL=${end}`;
+        const rrule = `FREQ=WEEKLY;BYDAY=${this.days.map(e => e.slice(0, 2)).join(",")};UNTIL=${end}Z`;
         const times = this.times;
 
         return `BEGIN:VEVENT
 UID:${this.title.replace(/[^a-zA-Z0-9]/g, "")}@samuel-kw
-SUMMARY:${this.room} (${this.title})
-DESCRIPTION:${this.title}
+SUMMARY:${this.title}
+DESCRIPTION:${this.elemTimes.textContent.trim().slice(7)} on ${this.elemDays.textContent.trim().slice(6)}
 LOCATION:${this.room}
 DTSTART:${toICS(getDateFromTimeString(times[0], this.start))}
 DTEND:${toICS(getDateFromTimeString(times[1], this.start))}
@@ -243,9 +223,29 @@ let str = `BEGIN:VCALENDAR
 PRODID:-//Samuel KW//SDSU Class Exporter 0.0.1
 VERSION:2.0
 CALSCALE:GREGORIAN
+X-WR-CALNAME:SDSU School Schedule
+X-WR-TIMEZONE:${Timezone}
+BEGIN:VTIMEZONE
+TZID:${Timezone}
+X-LIC-LOCATION:${Timezone}
+BEGIN:DAYLIGHT
+TZOFFSETFROM:-0800
+TZOFFSETTO:-0700
+TZNAME:PDT
+DTSTART:19700308T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:-0700
+TZOFFSETTO:-0800
+TZNAME:PST
+DTSTART:19701101T020000
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+END:STANDARD
+END:VTIMEZONE
 `;
 
-const elemCourses = document.querySelectorAll("div.ps_box-group > div.ps_box-scrollarea > div.ps_box-scrollarea-row[id^=win11divSSR_SBJCT_LVL1_row]");
+const elemCourses = document.querySelectorAll("div.ps_box-group > div.ps_box-scrollarea.psc_border-bottomonly > div.ps_box-scrollarea-row");
 for (const elem of elemCourses) {
     const course = new Course(elem);
     console.log(course.toEvent());
