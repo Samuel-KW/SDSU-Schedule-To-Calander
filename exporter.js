@@ -52,6 +52,37 @@ const download = (text) => {
     URL.revokeObjectURL(url);
 }
 
+/**
+ * Converts a string representing a time into a Date object
+ * @param {String} timeString - The time string to be parsed, e.g. '2:19AM'
+ * @returns {Date} A Date object representing the given time in the same day as the current date
+ * @throws {Error} If the given time string is invalid
+ */
+function getDateFromTimeString(timeString, date=new Date()) {
+
+    // Parse the time string
+    const timePattern = /^(\d{1,2}):(\d{2})(AM|PM)$/i;
+    const match = timeString.match(timePattern);
+
+    if (!match) {
+        throw new Error("Invalid time format. Must be formatted HH:mmAM/PM.");
+    }
+
+    let [_, hours, minutes, period] = match;
+    let hour = parseInt(hours, 10);
+    const minute = parseInt(minutes, 10);
+
+    // Adjust hour based on AM/PM
+    if (period.toUpperCase() === "PM" && hour !== 12) {
+        hour += 12;
+    } else if (period.toUpperCase() === "AM" && hour === 12) {
+        hour = 0;
+    }
+
+    date.setHours(hour, minute, 0, 0);
+    return date;
+}
+
 class Course {
 
     elemContainer;
@@ -178,15 +209,16 @@ class Course {
     toICS () {
         const start = toICS(this.start);
         const end = toICS(this.end);
-        const rrule = "FREQ=WEEKLY;BYDAY=" + this.days.map(e => e.slice(0, 2)).join(",");
+        const rrule = `FREQ=WEEKLY;BYDAY=${this.days.map(e => e.slice(0, 2)).join(",")};UNTIL=${end}`;
+        const times = this.times;
 
         return `BEGIN:VEVENT
 UID:${this.title.replace(/[^a-zA-Z0-9]/g, "")}@samuel-kw
 SUMMARY:${this.room} (${this.title})
 DESCRIPTION:${this.title}
 LOCATION:${this.room}
-DTSTART:${start}
-DTEND:${end}
+DTSTART:${toICS(getDateFromTimeString(times[0], this.start))}
+DTEND:${toICS(getDateFromTimeString(times[1], this.start))}
 DTSTAMP:${start}
 RRULE:${rrule}
 CREATED:${toICS(new Date())}
