@@ -248,10 +248,11 @@ END:VTIMEZONE
 const elemCourses = document.querySelectorAll("div.ps_box-group > div.ps_box-scrollarea.psc_border-bottomonly > div.ps_box-scrollarea-row");
 for (const elem of elemCourses) {
     const course = new Course(elem);
-    console.log(course.toEvent());
 
     if (course.room)
         str += course.toICS();
+    else
+        console.log("Skipping online course:", course.toEvent());
 }
 
 download(str + "END:VCALENDAR")
